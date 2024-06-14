@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Advanced Multimedia Recorder</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap">
+<style>
+    body {
+        font-family: 'Roboto', sans-serif;
+        background: linear-gradient(135deg, #e09, #d0e);
+        text-align: center;
+        padding: 20px;
+        color: #fff;
+    }
+    h1 {
+        margin-bottom: 20px;
+        font-size: 2.5rem;
+    }
+    .container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        justify-content: center;
+    }
+    .card {
+        background: rgba(255, 255, 255, 0.2);
+        padding: 20px;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        transition: transform 0.3s ease-in-out;
+    }
+    .card:hover {
+        transform: scale(1.05);
+    }
+    .card h2 {
+        margin-bottom: 10px;
+    }
+    .controls {
+        margin-bottom: 20px;
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+    .controls button {
+        padding: 10px 15px;
+        font-size: 16px;
+        cursor: pointer;
+        margin: 5px;
+        border: none;
+        border-radius: 5px;
+        background-color: #007bff;
+        color: white;
+        transition: background-color 0.3s, transform 0.2s;
+    }
+    .controls button:disabled {
+        background-color: #666;
+        cursor: not-allowed;
+    }
+    .controls button:hover:not(:disabled) {
+        background-color: #0056b3;
+        transform: translateY(-3px);
+    }
+    video, audio {
+        max-width: 100%;
+        border-radius: 10px;
+        box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+    }
+    #downloadLink {
+        display: none;
+    }
+    .modal {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        overflow: auto;
+        background-color: rgba(0, 0, 0, 0.7);
+        justify-content: center;
+        align-items: center;
+    }
+    .modal-content {
+        background-color: #fefefe;
+        margin: auto;
+        padding: 20px;
+        border: 1px solid #888;
+        width: 80%;
+        max-width: 600px;
+        border-radius: 10px;
+    }
+    .close {
+        color: #aaa;
+        float: right;
+        font-size: 28px;
+        font-weight: bold;
+    }
+    .close:hover,
+    .close:focus {
+        color: black;
+        text-decoration: none;
+        cursor: pointer;
+    }
+</style>
+</head>
+<body>
+    <h1>Siddharthasankar's Multimedia Recording . </h1>
+    <div class="container">
+        <div class="card">
+            <h2>Camera</h2>
+            <div class="controls">
+                <button id="startCameraButton">Start Camera</button>
+                <button id="stopCameraButton" disabled>Stop Camera</button>
+                <button id="recordCameraButton" disabled>Start Recording</button>
+                <button id="stopRecordCameraButton" disabled>Stop Recording</button>
+                <button id="playbackCameraButton" disabled>Playback</button>
+                <button id="downloadCameraButton" disabled>Download</button>
+            </div>
+            <video id="cameraVideo" autoplay playsinline></video>
+        </div>
+
+        <div class="card">
+            <h2>Webcam</h2>
+            <div class="controls">
+                <button id="startWebcamButton">Start Webcam</button>
+                <button id="stopWebcamButton" disabled>Stop Webcam</button>
+                <button id="recordWebcamButton" disabled>Start Recording</button>
+                <button id="stopRecordWebcamButton" disabled>Stop Recording</button>
+                <button id="playbackWebcamButton" disabled>Playback</button>
+                <button id="downloadWebcamButton" disabled>Download</button>
+            </div>
+            <video id="webcamVideo" autoplay playsinline></video>
+        </div>
+
+        <div class="card">
+            <h2>Screen</h2>
+            <div class="controls">
+                <button id="startScreenButton">Start Screen Cast</button>
+                <button id="stopScreenButton" disabled>Stop Screen Cast</button>
+                <button id="recordScreenButton" disabled>Start Recording</button>
+                <button id="stopRecordScreenButton" disabled>Stop Recording</button>
+                <button id="playbackScreenButton" disabled>Playback</button>
+                <button id="downloadScreenButton" disabled>Download</button>
+            </div>
+            <video id="screenVideo" autoplay playsinline></video>
+        </div>
+
+        <div class="card">
+            <h2>Audio</h2>
+            <div class="controls">
+                <button id="startAudioButton">Start Audio</button>
+                <button id="stopAudioButton" disabled>Stop Audio</button>
+                <button id="recordSoundButton" disabled>Start Recording</button>
+                <button id="stopRecordSoundButton" disabled>Stop Recording</button>
+                <button id="playbackSoundButton" disabled>Playback</button>
+                <button id="downloadSoundButton" disabled>Download</button>
+            </div>
+            <audio id="soundAudio" controls></audio>
+        </div>
+    </div>
+
+    <a id="downloadLink"></a>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <span class="close" id="closeModal">&times;</span>
+            <h2 id="modalTitle"></h2>
+            <video id="modalVideo" controls></video>
+            <audio id="modalAudio" controls></audio>
+        </div>
+    </div>
+
+    <script>
+        let cameraStream = null;
+        let webcamStream = null;
+        let screenStream = null;
+        let audioStream = null;
+        let cameraRecorder = null;
+        let webcamRecorder = null;
+        let screenRecorder = null;
+        let audioRecorder = null;
+        let cameraChunks = [];
+        let webcamChunks = [];
+        let screenChunks = [];
+        let audioChunks = [];
+        let recordedCameraURL = null;
+        let recordedWebcamURL = null;
+        let recordedScreenURL = null;
+        let recordedAudioURL = null;
+
+        const startCameraButton = document.getElementById('startCameraButton');
+        const stopCameraButton = document.getElementById('stopCameraButton');
+        const recordCameraButton = document.getElementById('recordCameraButton');
+        const stopRecordCameraButton = document.getElementById('stopRecordCameraButton');
+        const playbackCameraButton = document.getElementById('playbackCameraButton');
+        const downloadCameraButton = document.getElementById('downloadCameraButton');
+
+        const startWebcamButton = document.getElementById('startWebcamButton');
+        const stopWebcamButton = document.getElementById('stopWebcamButton');
+        const recordWebcamButton = document.getElementById('recordWebcamButton');
+        const stopRecordWebcamButton = document.getElementById('stopRecordWebcamButton');
+        const playbackWebcamButton = document.getElementById('playbackWebcamButton');
+        const downloadWebcamButton = document.getElementById('downloadWebcamButton');
+
+        const startScreenButton = document.getElementById('startScreenButton');
+        const stopScreenButton = document.getElementById('stopScreenButton');
+        const recordScreenButton = document.getElementById('recordScreenButton');
+        const stopRecordScreenButton = document.getElementById('stopRecordScreenButton');
+        const playbackScreenButton = document.getElementById('playbackScreenButton');
+        const downloadScreenButton = document.getElementById('downloadScreenButton');
+
+        const startAudioButton = document.getElementById('startAudioButton');
+        const stopAudioButton = document.getElementById('stopAudioButton');
+        const recordSoundButton = document.getElementById('recordSoundButton');
+        const stopRecordSoundButton = document.getElementById('stopRecordSoundButton');
+        const playbackSoundButton = document.getElementById('playbackSoundButton');
+        const downloadSoundButton = document.getElementById('downloadSoundButton');
+
+        const cameraVideo = document.getElementById('cameraVideo');
+        const webcamVideo = document.getElementById('webcamVideo');
+        const screenVideo = document.getElementById('screenVideo');
+        const soundAudio = document.getElementById('soundAudio');
+        const downloadLink = document.getElementById('downloadLink');
+        const modal = document.getElementById('modal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalVideo = document.getElementById('modalVideo');
+        const modalAudio = document.getElementById('modalAudio');
+        const closeModal = document.getElementById('closeModal');
+
+        // Modal Close
+        closeModal.addEventListener('click', () => {
+            modal.style.display = 'none';
+            modalVideo.style.display = 'none';
+            modalAudio.style.display = 'none';
+            modalVideo.src = '';
+            modalAudio.src = '';
+        });
+
+        // Start Camera
+        startCameraButton.addEventListener('click', async () => {
+            try {
+                cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                cameraVideo.srcObject = cameraStream;
+                stopCameraButton.disabled = false;
+                recordCameraButton.disabled = false;
+                startCameraButton.disabled = true;
+            } catch (error) {
+                alert('Failed to access the camera.');
+                console.error(error);
+            }
+        });
+
+        // Stop Camera
+        stopCameraButton.addEventListener('click', () => {
+            cameraStream.getTracks().forEach(track => track.stop());
+            cameraVideo.srcObject = null;
+            stopCameraButton.disabled = true;
+            recordCameraButton.disabled = true;
+            stopRecordCameraButton.disabled = true;
+            startCameraButton.disabled = false;
+        });
+
+        // Start Webcam
+        startWebcamButton.addEventListener('click', async () => {
+            try {
+                webcamStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+                webcamVideo.srcObject = webcamStream;
+                stopWebcamButton.disabled = false;
+                recordWebcamButton.disabled = false;
+                startWebcamButton.disabled = true;
+            } catch (error) {
+                alert('Failed to access the webcam.');
+                console.error(error);
+            }
+        });
+
+        // Stop Webcam
+        stopWebcamButton.addEventListener('click', () => {
+            webcamStream.getTracks().forEach(track => track.stop());
+            webcamVideo.srcObject = null;
+            stopWebcamButton.disabled = true;
+            recordWebcamButton.disabled = true;
+            stopRecordWebcamButton.disabled = true;
+            startWebcamButton.disabled = false;
+        });
+
+        // Start Screen Cast
+        startScreenButton.addEventListener('click', async () => {
+            try {
+                screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+                screenVideo.srcObject = screenStream;
+                stopScreenButton.disabled = false;
+                recordScreenButton.disabled = false;
+                startScreenButton.disabled = true;
+            } catch (error) {
+                alert('Failed to access the screen.');
+                console.error(error);
+            }
+        });
+
+        // Stop Screen Cast
+        stopScreenButton.addEventListener('click', () => {
+            screenStream.getTracks().forEach(track => track.stop());
+            screenVideo.srcObject = null;
+            stopScreenButton.disabled = true;
+            recordScreenButton.disabled = true;
+            stopRecordScreenButton.disabled = true;
+            startScreenButton.disabled = false;
+        });
+
+        // Start Audio
+        startAudioButton.addEventListener('click', async () => {
+            try {
+                audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioStream.getTracks().forEach(track => track.onended = () => {
+                    stopAudioButton.disabled = true;
+                    recordSoundButton.disabled = true;
+                    stopRecordSoundButton.disabled = true;
+                    startAudioButton.disabled = false;
+                });
+                stopAudioButton.disabled = false;
+                recordSoundButton.disabled = false;
+                startAudioButton.disabled = true;
+            } catch (error) {
+                alert('Failed to access the microphone.');
+                console.error(error);
+            }
+        });
+
+        // Stop Audio
+        stopAudioButton.addEventListener('click', () => {
+            audioStream.getTracks().forEach(track => track.stop());
+            stopAudioButton.disabled = true;
+            recordSoundButton.disabled = true;
+            stopRecordSoundButton.disabled = true;
+            startAudioButton.disabled = false;
+        });
+
+        // Start Recording Functions
+        recordCameraButton.addEventListener('click', () => startRecording('camera'));
+        recordWebcamButton.addEventListener('click', () => startRecording('webcam'));
+        recordScreenButton.addEventListener('click', () => startRecording('screen'));
+        recordSoundButton.addEventListener('click', () => startRecording('audio'));
+
+        // Stop Recording Functions
+        stopRecordCameraButton.addEventListener('click', () => stopRecording('camera'));
+        stopRecordWebcamButton.addEventListener('click', () => stopRecording('webcam'));
+        stopRecordScreenButton.addEventListener('click', () => stopRecording('screen'));
+        stopRecordSoundButton.addEventListener('click', () => stopRecording('audio'));
+
+        // Playback Functions
+        playbackCameraButton.addEventListener('click', () => playbackRecording('camera'));
+        playbackWebcamButton.addEventListener('click', () => playbackRecording('webcam'));
+        playbackScreenButton.addEventListener('click', () => playbackRecording('screen'));
+        playbackSoundButton.addEventListener('click', () => playbackRecording('audio'));
+
+        // Download Functions
+        downloadCameraButton.addEventListener('click', () => downloadRecording('camera'));
+        downloadWebcamButton.addEventListener('click', () => downloadRecording('webcam'));
+        downloadScreenButton.addEventListener('click', () => downloadRecording('screen'));
+        downloadSoundButton.addEventListener('click', () => downloadRecording('audio'));
+
+        // Function to Start Recording
+        function startRecording(type) {
+            let stream;
+            let recorder;
+            let chunks;
+
+            switch (type) {
+                case 'camera':
+                    stream = cameraStream;
+                    chunks = cameraChunks;
+                    recorder = new MediaRecorder(stream);
+                    cameraRecorder = recorder;
+                    recordCameraButton.disabled = true;
+                    stopRecordCameraButton.disabled = false;
+                    break;
+                case 'webcam':
+                    stream = webcamStream;
+                    chunks = webcamChunks;
+                    recorder = new MediaRecorder(stream);
+                    webcamRecorder = recorder;
+                    recordWebcamButton.disabled = true;
+                    stopRecordWebcamButton.disabled = false;
+                    break;
+                case 'screen':
+                    stream = screenStream;
+                    chunks = screenChunks;
+                    recorder = new MediaRecorder(stream);
+                    screenRecorder = recorder;
+                    recordScreenButton.disabled = true;
+                    stopRecordScreenButton.disabled = false;
+                    break;
+                case 'audio':
+                    stream = audioStream;
+                    chunks = audioChunks;
+                    recorder = new MediaRecorder(stream);
+                    audioRecorder = recorder;
+                    recordSoundButton.disabled = true;
+                    stopRecordSoundButton.disabled = false;
+                    break;
+                default:
+                    return;
+            }
+
+            recorder.ondataavailable = event => {
+                if (event.data.size > 0) {
+                    chunks.push(event.data);
+                }
+            };
+
+            recorder.onstop = () => {
+                const blob = new Blob(chunks, { type: `${type === 'audio' ? 'audio/wav' : 'video/webm'}` });
+                const url = URL.createObjectURL(blob);
+
+                switch (type) {
+                    case 'camera':
+                        recordedCameraURL = url;
+                        playbackCameraButton.disabled = false;
+                        downloadCameraButton.disabled = false;
+                        break;
+                    case 'webcam':
+                        recordedWebcamURL = url;
+                        playbackWebcamButton.disabled = false;
+                        downloadWebcamButton.disabled = false;
+                        break;
+                    case 'screen':
+                        recordedScreenURL = url;
+                        playbackScreenButton.disabled = false;
+                        downloadScreenButton.disabled = false;
+                        break;
+                    case 'audio':
+                        recordedAudioURL = url;
+                        playbackSoundButton.disabled = false;
+                        downloadSoundButton.disabled = false;
+                        break;
+                }
+            };
+
+            recorder.start();
+        }
+
+        // Function to Stop Recording
+        function stopRecording(type) {
+            switch (type) {
+                case 'camera':
+                    cameraRecorder.stop();
+                    stopRecordCameraButton.disabled = true;
+                    recordCameraButton.disabled = false;
+                    break;
+                case 'webcam':
+                    webcamRecorder.stop();
+                    stopRecordWebcamButton.disabled = true;
+                    recordWebcamButton.disabled = false;
+                    break;
+                case 'screen':
+                    screenRecorder.stop();
+                    stopRecordScreenButton.disabled = true;
+                    recordScreenButton.disabled = false;
+                    break;
+                case 'audio':
+                    audioRecorder.stop();
+                    stopRecordSoundButton.disabled = true;
+                    recordSoundButton.disabled = false;
+                    break;
+            }
+        }
+
+        // Function to Playback Recording
+        function playbackRecording(type) {
+            modal.style.display = 'flex';
+            modalTitle.innerText = `Playback - ${type.charAt(0).toUpperCase() + type.slice(1)} Recording`;
+
+            switch (type) {
+                case 'camera':
+                    modalVideo.src = recordedCameraURL;
+                    modalVideo.style.display = 'block';
+                    modalAudio.style.display = 'none';
+                    break;
+                case 'webcam':
+                    modalVideo.src = recordedWebcamURL;
+                    modalVideo.style.display = 'block';
+                    modalAudio.style.display = 'none';
+                    break;
+                case 'screen':
+                    modalVideo.src = recordedScreenURL;
+                    modalVideo.style.display = 'block';
+                    modalAudio.style.display = 'none';
+                    break;
+                case 'audio':
+                    modalAudio.src = recordedAudioURL;
+                    modalAudio.style.display = 'block';
+                    modalVideo.style.display = 'none';
+                    break;
+            }
+        }
+
+        // Function to Download Recording
+        function downloadRecording(type) {
+            let url;
+            let fileName;
+
+            switch (type) {
+                case 'camera':
+                    url = recordedCameraURL;
+                    fileName = 'camera_recording.webm';
+                    break;
+                case 'webcam':
+                    url = recordedWebcamURL;
+                    fileName = 'webcam_recording.webm';
+                    break;
+                case 'screen':
+                    url = recordedScreenURL;
+                    fileName = 'screen_recording.webm';
+                    break;
+                case 'audio':
+                    url = recordedAudioURL;
+                    fileName = 'audio_recording.wav';
+                    break;
+            }
+
+            downloadLink.href = url;
+            downloadLink.download = fileName;
+            downloadLink.click();
+        }
+    </script>
+</body>
+</html>
